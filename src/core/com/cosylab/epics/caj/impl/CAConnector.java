@@ -52,6 +52,11 @@ public class CAConnector implements Connector {
 	private static final int LOCK_TIMEOUT = 20 * 1000;	// 20s
 	
 	/**
+	 * Socket connect timeout (ms).
+	 */
+	private static final int SOCKET_CONNECT_TIMEOUT = 100;
+	
+	/**
 	 * Map tracking failed TCP connections
 	 */
 	private final Map<InetSocketAddress, RetryFailedConnection> failedToConnect = new ConcurrentHashMap<InetSocketAddress, RetryFailedConnection>();
@@ -202,7 +207,22 @@ public class CAConnector implements Connector {
 
 			try
 			{
-				return SocketChannel.open(address);
+				SocketChannel socketChannel = SocketChannel.open();
+				socketChannel.configureBlocking(false);
+				long start = System.currentTimeMillis();
+				socketChannel.connect(address); // Returns immediately (non-blocking)
+				
+				// Check if the socket has connected before returning
+				while(! socketChannel.finishConnect() ){
+					// Timeout if connection takes too long
+					if (System.currentTimeMillis() - start > SOCKET_CONNECT_TIMEOUT) {
+						throw new IOException("Connection timeout to "+address);
+					}
+					try {
+						Thread.sleep(1);
+					} catch (InterruptedException ie) {}
+				}
+				return socketChannel;
 			}
 			catch (IOException ioe)
 			{
