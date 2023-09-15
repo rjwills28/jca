@@ -208,20 +208,7 @@ public class CAConnector implements Connector {
 			try
 			{
 				SocketChannel socketChannel = SocketChannel.open();
-				socketChannel.configureBlocking(false);
-				long start = System.currentTimeMillis();
-				socketChannel.connect(address); // Returns immediately (non-blocking)
-				
-				// Check if the socket has connected before returning
-				while(! socketChannel.finishConnect() ){
-					// Timeout if connection takes too long
-					if (System.currentTimeMillis() - start > SOCKET_CONNECT_TIMEOUT) {
-						throw new IOException("Connection timeout to "+address);
-					}
-					try {
-						Thread.sleep(1);
-					} catch (InterruptedException ie) {}
-				}
+				socketChannel.socket().connect(address, SOCKET_CONNECT_TIMEOUT);				
 				return socketChannel;
 			}
 			catch (IOException ioe)
